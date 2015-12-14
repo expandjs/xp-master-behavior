@@ -7,20 +7,22 @@ The complete set of contributors may be found at https://expandjs.github.io/CONT
 -->
 
 <!--
-This behavior is used to add master capabilities on the context element for a master-slave pattern.
+A behavior used to add master capabilities on a custom element.
 
 @element xp-master-behavior
-@description A behavior used to add master capabilities on the context element for a master-slave pattern
-@keywords web app, html5, expandjs, web-components
+@description A behavior used to add master capabilities on a custom element
+@keywords expandjs, web app, custom elements, web-components
 @group behaviors
+@hot
+
 @homepage http://expandjs.com/elements/xp-master-behavior
 @repository https://github.com/ExpandJS/xp-master-behavior
 
 @behavior xp-array-behavior /bower_components/xp-array-behavior/xp-array-behavior.html
 
-@dependency polymer Polymer/polymer#^1.1.0
-@dependency expandjs ExpandJS/expandjs#0.9.11
-@dependency xp-array-behavior ExpandJS/xp-array-behavior#0.9.11
+@dependency polymer Polymer/polymer#^1.2.0
+@dependency expandjs ExpandJS/expandjs#0.10.0
+@dependency xp-array-behavior ExpandJS/xp-array-behavior#0.10.0
 -->
 
 <link rel="import" href="../polymer/polymer.html">
@@ -31,17 +33,7 @@ This behavior is used to add master capabilities on the context element for a ma
     Polymer.XPMasterBehaviorImp = {
 
         /**
-         * The method that will return the slaves map.
-         *
-         * @method _setupSlaves
-         * @abstract
-         */
-        _setupSlaves: XP.mock(),
-
-        /*********************************************************************/
-
-        /**
-         * Couples a slave to this element.
+         * Couples a slave.
          *
          * @method _coupleSlave
          * @param {string} key
@@ -51,12 +43,12 @@ This behavior is used to add master capabilities on the context element for a ma
          */
         _coupleSlave: function (key, slave) {
             var self = this;
-            if (!self[key]) { self['_set' + XP.capitalize(key)]([]); }
+            if (!self[key]) { self[XP.setter(key, true)]([]); }
             return self.append(key, slave);
         },
 
         /**
-         * Decouples a slave from this element.
+         * Decouples a slave.
          *
          * @method _decoupleSlave
          * @param {string} key
@@ -81,7 +73,6 @@ This behavior is used to add master capabilities on the context element for a ma
 
             /**
              * A map used to bind slaves arrays to their respective css selector.
-             * Each key is an element's property and its value is the selector.
              *
              * @attribute slaves-map
              * @type Object
@@ -92,15 +83,8 @@ This behavior is used to add master capabilities on the context element for a ma
                 notify: true,
                 readOnly: true,
                 type: Object,
-                value: null
+                value: function () { return {}; }
             }
-        },
-
-        /*********************************************************************/
-
-        // LISTENER
-        ready: function () {
-            this._setSlavesMap(this._setupSlaves() || {});
         },
 
         /*********************************************************************/
@@ -110,24 +94,18 @@ This behavior is used to add master capabilities on the context element for a ma
 
             // Vars
             var self       = this,
-                coupler    = event.detail.coupler,
+                couple     = event.detail.couple,
                 isAttached = event.detail.isAttached,
                 selector   = event.detail.selector,
                 slave      = event.detail.firer,
-                matches    = coupler && selector && slave && self !== slave && XP.matches(self, selector),
-                property   = matches && XP.mapOne(self.slavesMap, function (value, key) { if (XP.matches(slave, value)) { return key; } });
-
-            // Checking
-            if (!property) { return; }
-
-            // Coupling (master side)
-            self[isAttached ? '_coupleSlave' : '_decoupleSlave'](property, slave);
-
-            // Coupling (slave side)
-            coupler(self);
+                matches    = couple && selector && slave && self !== slave && XP.matches(self, selector),
+                property   = matches && XP.findKey(self.slavesMap, function (value) { return XP.matches(slave, value); });
 
             // Stopping
-            event.stopPropagation();
+            if (property) { event.stopPropagation(); } else { return; }
+
+            // Coupling
+            if (self[isAttached ? '_coupleSlave' : '_decoupleSlave'](property, slave)) { couple(self); }
         }
     };
 
